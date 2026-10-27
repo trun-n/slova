@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Рандомайзер предметов — АБВ</title>
+<style>
+  :root{
+    --red:#A22A2A;
+    --orange:#EB7E30;
+    --rose:#CB6A6A;
+    --black:#111111;
+    --white:#ffffff;
+    --bg:#fafafa;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+    min-height:100vh;
+    background: var(--bg);
+    color: var(--black);
+    padding:20px;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  .container{
+    width:100%; max-width:850px;
+    display:flex; flex-direction:column; gap:20px;
+  }
+  
+  .card{
+    background: var(--white);
+    border:2px solid var(--red);
+    border-radius:20px;
+    padding:24px;
+    box-shadow: 0 10px 30px rgba(162,42,42,.08);
+  }
+  
+  h1{ font-size:1.6rem; color: var(--red); text-align:center; margin-bottom:6px; }
+  .subtitle{ text-align:center; color: var(--rose); font-size:.9rem; margin-bottom:20px; }
+  h2{ font-size:1.2rem; color: var(--red); margin-bottom:14px; }
+
+  /* Настройка команд */
+  .setup-row{
+    display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap;
+  }
+  .setup-row input{
+    padding:10px 14px; border-radius:10px; border:1px solid var(--rose);
+    font-size:1rem; width:100px; outline:none; text-align:center; font-weight:600;
+  }
+  .setup-row input:focus{ border-color: var(--orange); }
+  .setup-row button{
+    padding:10px 20px; border-radius:10px; border:none; cursor:pointer;
+    background: var(--red); color: var(--white); font-weight:700; font-size:1rem;
+    transition: filter .12s;
+  }
+  .setup-row button:hover{ filter:brightness(1.1); }
+
+  /* Кнопки команд */
+  .teams-panel{
+    display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:20px;
+    padding-top:20px; border-top:1px dashed var(--rose);
+  }
+  .team-btn{
+    padding:10px 16px; border-radius:12px; border:2px solid var(--rose);
+    background: var(--white); color: var(--black); font-size:1rem; font-weight:600;
+    cursor:pointer; transition: all .15s;
+  }
+  .team-btn:hover{ border-color: var(--orange); }
+  .team-btn.active{
+    background: var(--orange); color: var(--white); border-color: var(--orange);
+    box-shadow: 0 4px 12px rgba(235,126,48,.3);
+  }
+
+  /* Рулетка */
+  .roulette-area{ text-align:center; padding:30px 20px; }
+  .result-box{
+    font-size:1.8rem; font-weight:800; color: var(--red);
+    min-height:80px; display:flex; align-items:center; justify-content:center;
+    margin-bottom:20px; padding:10px;
+  }
+  .result-box.pop{ animation: pop .4s ease; }
+  @keyframes pop{ 0%{transform:scale(.9); opacity:.6;} 100%{transform:scale(1); opacity:1;} }
+  
+  .btn-spin{
+    padding:18px 40px; border-radius:16px; border:none; cursor:pointer;
+    background: var(--red); color: var(--white); font-size:1.2rem; font-weight:700;
+    transition: transform .12s, filter .12s;
+    box-shadow: 0 6px 20px rgba(162,42,42,.25);
+  }
+  .btn-spin:hover:not(:disabled){ transform:translateY(-2px); filter:brightness(1.1); }
+  .btn-spin:active:not(:disabled){ transform:translateY(0); }
+  .btn-spin:disabled{ opacity:.45; cursor:not-allowed; }
+
+  /* Итоги */
+  .team-results{ 
+    display:grid; 
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
+    gap:16px; 
+  }
+  .team-result-row{
+    background: var(--bg); border-radius:12px; padding:12px 16px;
+    border-top:4px solid var(--orange);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .team-result-name{ font-weight:700; color: var(--red); margin-bottom:8px; font-size:1.1rem;}
+  .team-result-items{ 
+    font-size:.95rem; color: #333; line-height: 1.4;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .team-result-items li {
+    list-style: none;
+    padding-left: 14px;
+    position: relative;
+  }
+  .team-result-items li::before {
+    content: "•";
+    color: var(--orange);
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+  }
+
+  .btn-show-all{
+    margin-top:16px; width:100%; padding:14px;
+    background: var(--white); border:2px solid var(--red);
+    color: var(--red); font-weight:700; border-radius:12px; cursor:pointer;
+    transition: all .12s;
+  }
+  .btn-show-all:hover{ background: var(--red); color: var(--white); }
+
+  /* Модалка */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.5);
+    display:none; align-items:center; justify-content:center; padding:20px;
+    z-index:50;
+  }
+  .modal-overlay.show{ display:flex; }
+  .modal{
+    background:var(--white); border-radius:16px; padding:24px;
+    max-width:700px; width:100%; border-top:8px solid var(--red);
+    max-height:85vh; overflow-y:auto;
+  }
+  .modal h2{ text-align:center; margin-bottom:16px; }
+  .modal-content{ 
+    font-size:1rem; line-height:1.6; 
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+    text-align: left;
+  }
+  .modal-team-col {
+    background: var(--bg);
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 4px solid var(--orange);
+  }
+  .modal-team-col strong {
+    color: var(--red);
+    display: block;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 4px;
+  }
+  .modal-team-col ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .modal-team-col li {
+    margin-bottom: 4px;
+    font-size: 0.95rem;
+  }
+  .modal-team-col li.joker {
+    color: var(--red);
+    font-weight: 600;
+  }
+
+  .modal button{
+    margin-top:20px; width:100%; padding:12px;
+    background: var(--orange); color: var(--white);
+    border:none; border-radius:10px; font-weight:700; cursor:pointer; font-size:1rem;
+  }
+
+  .footer{
+    text-align:center; font-size:.85rem; color: var(--red); font-weight:600;
+    margin-top:10px; padding-bottom:20px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Рандомайзер предметов</h1>
+  <div class="subtitle">Игра для вожатского квеста</div>
+
+  <!-- Блок создания команд -->
+  <div class="card">
+    <h2 style="text-align:center;">Управление командами</h2>
+    <div class="setup-row">
+      <label style="font-weight:600;">Количество команд:</label>
+      <input type="number" id="teamCount" min="1" max="10" value="3">
+      <button id="createTeamsBtn">Создать</button>
+    </div>
+    
+    <div class="teams-panel" id="teamsPanel"></div>
+  </div>
+
+  <!-- Рулетка -->
+  <div class="card roulette-area">
+    <div class="result-box" id="resultBox">Нажми на кнопку, чтобы выдать предмет</div>
+    <button class="btn-spin" id="spinBtn" disabled>Крутить</button>
+  </div>
+
+  <!-- Итоги по командам -->
+  <div class="card">
+    <h2>Что выпало командам</h2>
+    <div class="team-results" id="teamResults">
+      <p style="color:#888; font-style:italic;">Сначала создай команды и выдай им предметы.</p>
+    </div>
+    <button class="btn-show-all" id="showAllBtn">Вывести общий список по колонкам</button>
+  </div>
+
+  <div class="footer">АБВ — Академия будущих вожатых</div>
+</div>
+
+<!-- Модалка для общего списка -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>Общий список</h2>
+    <div class="modal-content" id="modalContent"></div>
+    <button id="modalClose">Закрыть</button>
+  </div>
+</div>
+
+<script>
+  // ====== СПИСОК ПРЕДМЕТОВ (ТОЛЬКО ПРЕДМЕТЫ) ======
+  const BASE_ITEMS = [
+    "Моток верёвки", "Фонарик", "Клейкая лента (скотч)", "Теннисный мячик", "Цветные мелки", 
+    "Маркер", "Влажные салфетки", "Блокнот", "Ручка", "Свисток", "Шоколадка", "Пластырь", 
+    "Запасные шнурки", "Бумажный стаканчик", "Лист А4", "Скрепки", "Полиэтиленовый пакет", 
+    "Пластиковая ложка", "Один носок", "Втулка от туалетной бумаги", "Лавровый лист", 
+    "Пуговица", "Прищепка", "Сдутый шарик", "Крышка от бутылки", "Старая газета", 
+    "Канцелярская резинка", "Зубочистка", "Монетка", "Фантик", "Кусочек мела", 
+    "Бумажный самолётик", "Сосновая шишка", "Морской камушек", "Осенний листик", 
+    "Ватная палочка", "Пластиковый стакан", "Фольга", "Ножницы", "Цветная бумага", 
+    "Клей-карандаш", "Точилка", "Ластик", "Простой карандаш", "Кисточка", "Гуашь", 
+    "Пластилин", "Спичечный коробок", "Свечка", "Батарейка", "Старые наушники", 
+    "Зарядка для телефона", "Антисептик", "Медицинская маска", "Резиновая перчатка", 
+    "Бинт", "Вата", "Пакетик чая", "Кофе в стиках", "Сахар в кубиках", "Пакетик соли", 
+    "Лапша быстрого приготовления", "Печенье", "Леденец (Чупа-чупс)", "Жвачка", 
+    "Семечки", "Грецкий орех", "Бутылка воды", "Кубик Рубика", "Колода карт", 
+    "Шахматная фигура", "Спиннер", "Йо-йо", "Скакалка", "Резинка для прыжков", 
+    "Обруч", "Воланчик", "Ракетка для бадминтона", "Мыльные пузыри", "Раскраска", 
+    "Наклейки", "Плюшевый мишка", "Машинка", "Солдатик", "Дудка", "Бубен", 
+    "Игрушечный микрофон", "Портативная колонка", "Флешка", "Кружка", "Металлическая вилка", 
+    "Миска", "Термос", "Яблоко", "Банан", "Мандарин", "Огурец", "Морковь", 
+    "Картофелина", "Луковица", "Камень", "Стеклянный шарик", "Компас", "Лупа", 
+    "Бинокль", "Линейка", "Циркуль", "Будильник", "Песочные часы", "Секундомер", 
+    "Бейсболка", "Резиновые перчатки", "Шарф", "Детские очки", "Дождевик", 
+    "Складной зонт", "Рюкзак", "Кошелёк", "Связка ключей", "Брелок", 
+    "Бенгальский огонь", "Хлопушка", "Гирлянда", "Мишура", "Конфетти", 
+    "Карнавальная маска", "Парик", "Игрушечные усы", "Аквагрим", "Мольберт", 
+    "Палитра", "Уголь для рисования", "Степлер", "Канцелярская кнопка", "Швейная иголка", 
+    "Катушка ниток", "Лента атласная", "Кружево", "Молния", "Бисер", 
+    "Проволока", "Леска", "Карабин", "Шило", "Насос для мяча", "Флаг", 
+    "Пионерский галстук", "Отрядный уголок (пустой)", "Гитара (игрушечная)", 
+    "Сборник сказок", "Раскладной стакан", "Складная табуретка", "Сачок для бабочек", 
+    "Коробка от обуви", "Рулон обоев", "Кусок мыла", "Зубная щетка", "Расческа", 
+    "Зеркальце", "Бубенчики", "Трещотка", "Барабан", "Колокольчик", "Теннисная ракетка"
+  ];
+
+  // ====== ДЖОКЕРЫ (20 ШТУК) ======
+  const JOKERS = [
+    "ПУСТОТА (ничего не получаете)",
+    "ДЖОКЕР: Выбор! Возьмите ЛЮБОЙ предмет из запаса ведущего",
+    "ДЖОКЕР: Обмен! Поменяйте один свой предмет на любой предмет другой команды",
+    "ДЖОКЕР: Двойная выдача! Крутите рулетку еще раз",
+    "ДЖОКЕР: Отдайте один свой предмет любой другой команде",
+    "ПУСТОТА (но вы можете обменять это на конфету у ведущего)",
+    "ДЖОКЕР: Обмен с банком! Сдайте 2 своих предмета и получите 1 новый",
+    "ДЖОКЕР: Выбор из двух! Ведущий выдаст вам на выбор 2 предмета",
+    "ДЖОКЕР: Кража! Заберите один предмет у команды-лидера",
+    "ПУСТОТА (сгорела карточка)",
+    "ДЖОКЕР: Всеобщий обмен! Все команды передают один предмет по кругу",
+    "ДЖОКЕР: Бонус! Получите 2 предмета за одно задание",
+    "ДЖОКЕР: Зеркало! Скопируйте последний выданный предмет другой команды",
+    "ПУСТОТА (но компенсация: +1 к прокруту)",
+    "ДЖОКЕР: Выбор! Загадайте любой предмет, если ведущий разрешит — забирайте",
+    "ДЖОКЕР: Обмен вслепую! Поменяйтесь одним предметом с соседней командой",
+    "ДЖОКЕР: Ускорение! Следующее задание выполняется без подготовки",
+    "ПУСТОТА (ведущий забирает один ваш предмет)",
+    "ДЖОКЕР: Дубликат! Возьмите второй экземпляр любого своего предмета",
+    "ДЖОКЕР: Анти-джокер! Отмените действие последнего джокера любой команды"
+  ];
+
+  let availableItems = []; 
+  let teams = [];          
+  let activeTeamIndex = null;
+
+  const teamCountInput = document.getElementById('teamCount');
+  const createTeamsBtn = document.getElementById('createTeamsBtn');
+  const teamsPanel = document.getElementById('teamsPanel');
+  const spinBtn = document.getElementById('spinBtn');
+  const resultBox = document.getElementById('resultBox');
+  const teamResults = document.getElementById('teamResults');
+  const showAllBtn = document.getElementById('showAllBtn');
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalContent = document.getElementById('modalContent');
+  const modalClose = document.getElementById('modalClose');
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function initItems() {
+    // Перемешиваем базовые предметы, убираем дубликаты
+    let uniqueBase = [...new Set(BASE_ITEMS)];
+    let pool = [...uniqueBase, ...JOKERS];
+    // Перемешиваем весь пул, чтобы джокеры выпадали в случайный момент
+    availableItems = shuffle(pool);
+  }
+
+  function renderTeams() {
+    teamsPanel.innerHTML = '';
+    if (teams.length === 0) return;
+
+    teams.forEach((team, index) => {
+      const btn = document.createElement('button');
+      btn.className = 'team-btn';
+      if (index === activeTeamIndex) btn.classList.add('active');
+      btn.textContent = team.name;
+      
+      btn.addEventListener('click', () => {
+        activeTeamIndex = index;
+        renderTeams();
+        updateSpinButton();
+        
+        if (teams[activeTeamIndex].items.length > 0) {
+          resultBox.textContent = teams[activeTeamIndex].items[teams[activeTeamIndex].items.length - 1];
+        } else {
+          resultBox.textContent = `Команда ${activeTeamIndex + 1} готова! Крути!`;
+        }
+      });
+      
+      teamsPanel.appendChild(btn);
+    });
+  }
+
+  function updateSpinButton() {
+    if (activeTeamIndex === null) {
+      spinBtn.disabled = true;
+      spinBtn.textContent = 'Выберите команду';
+      return;
+    }
+    if (availableItems.length === 0) {
+      spinBtn.disabled = true;
+      spinBtn.textContent = 'Предметы закончились';
+      return;
+    }
+    spinBtn.disabled = false;
+    spinBtn.textContent = 'Крутить предмет';
+  }
+
+  function renderResults() {
+    if (teams.length === 0) return;
+    teamResults.innerHTML = '';
+    
+    teams.forEach(team => {
+      const col = document.createElement('div');
+      col.className = 'team-result-row';
+      
+      const name = document.createElement('div');
+      name.className = 'team-result-name';
+      name.textContent = team.name;
+      
+      const list = document.createElement('ul');
+      list.className = 'team-result-items';
+      
+      if (team.items.length === 0) {
+        list.innerHTML = '<li style="color:#999; font-style:italic;">Пока пусто</li>';
+      } else {
+        team.items.forEach(item => {
+          const li = document.createElement('li');
+          // Подсвечиваем джокеры
+          if (item.includes('ДЖОКЕР') || item.includes('ПУСТОТА')) {
+            li.style.color = 'var(--red)';
+            li.style.fontWeight = 'bold';
+          }
+          li.textContent = item;
+          list.appendChild(li);
+        });
+      }
+      
+      col.appendChild(name);
+      col.appendChild(list);
+      teamResults.appendChild(col);
+    });
+  }
+
+  createTeamsBtn.addEventListener('click', () => {
+    let count = parseInt(teamCountInput.value);
+    if (isNaN(count) || count < 1) count = 1;
+    if (count > 10) count = 10;
+    teamCountInput.value = count;
+
+    teams = [];
+    for (let i = 1; i <= count; i++) {
+      teams.push({ name: `Команда ${i}`, items: [] });
+    }
+    
+    activeTeamIndex = null;
+    initItems(); 
+    renderTeams();
+    renderResults();
+    updateSpinButton();
+    
+    resultBox.textContent = 'Выберите команду';
+  });
+
+  spinBtn.addEventListener('click', () => {
+    if (activeTeamIndex === null || availableItems.length === 0) return;
+
+    spinBtn.disabled = true;
+    let counter = 0;
+    
+    // Создаем пул для визуальной прокрутки (первые 50 предметов)
+    const visualPool = availableItems.slice(0, 50);
+    
+    const interval = setInterval(() => {
+      const randItem = visualPool[Math.floor(Math.random() * visualPool.length)];
+      resultBox.textContent = randItem;
+      counter++;
+      
+      if (counter > 10) {
+        clearInterval(interval);
+        
+        const item = availableItems.pop();
+        teams[activeTeamIndex].items.push(item);
+        
+        resultBox.textContent = item;
+        
+        // Стилизация под джокер
+        if (item.includes('ДЖОКЕР') || item.includes('ПУСТОТА')) {
+             resultBox.style.color = 'var(--orange)';
+        } else {
+             resultBox.style.color = 'var(--red)';
+        }
+        
+        resultBox.classList.remove('pop');
+        void resultBox.offsetWidth; 
+        resultBox.classList.add('pop');
+        
+        renderResults();
+        updateSpinButton();
+      }
+    }, 50);
+  });
+
+  showAllBtn.addEventListener('click', () => {
+    if (teams.length === 0) {
+      alert('Сначала создай команды!');
+      return;
+    }
+    
+    modalContent.innerHTML = '';
+    
+    teams.forEach(team => {
+      const col = document.createElement('div');
+      col.className = 'modal-team-col';
+      
+      const title = document.createElement('strong');
+      title.textContent = team.name;
+      col.appendChild(title);
+      
+      const ul = document.createElement('ul');
+      if (team.items.length === 0) {
+        ul.innerHTML = '<li style="color:#999; font-style:italic;">Пусто</li>';
+      } else {
+        team.items.forEach(item => {
+          const li = document.createElement('li');
+          if (item.includes('ДЖОКЕР') || item.includes('ПУСТОТА')) {
+            li.className = 'joker';
+          }
+          li.textContent = item;
+          ul.appendChild(li);
+        });
+      }
+      col.appendChild(ul);
+      modalContent.appendChild(col);
+    });
+    
+    modalOverlay.classList.add('show');
+  });
+
+  modalClose.addEventListener('click', () => modalOverlay.classList.remove('show'));
+  modalOverlay.addEventListener('click', (e) => {
+    if (e.target === modalOverlay) modalOverlay.classList.remove('show');
+  });
+
+  initItems();
+</script>
+
+</body>
+</html>
